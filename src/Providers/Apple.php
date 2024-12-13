@@ -103,6 +103,16 @@ class Apple extends Base {
 	];
 
 	/**
+	 * Maximum allowed zoom level
+	 *
+	 * Apple Maps supports zoom levels from 1 to 21.
+	 * This overrides the base class maximum zoom level.
+	 *
+	 * @var int
+	 */
+	protected int $max_zoom = 21;
+
+	/**
 	 * Set a search query
 	 *
 	 * @param string     $query Search query or label
@@ -297,21 +307,27 @@ class Apple extends Base {
 	 * @return string The generated directions URL
 	 */
 	private function get_directions_url(): string {
-		$params = [
-			'daddr'  => $this->destination,
-			'dirflg' => $this->get_directions_flag()
-		];
+		$params = [];
 
+		// Set the transportation mode first
+		$params['dirflg'] = $this->get_directions_flag();
+
+		// Then set origin and destination
 		if ( $this->origin ) {
 			$params['saddr'] = $this->origin;
 		}
+		$params['daddr'] = $this->destination;
 
-		// Add map type if not standard
+		// Map type should be last
 		if ( $this->map_type !== 'standard' ) {
 			$params['t'] = $this->map_type_codes[ $this->map_type ];
 		}
 
-		return self::BASE_URL . '?' . http_build_query( $params );
+		// We could also try using SORT_NATURAL to maintain a consistent parameter order
+		ksort( $params, SORT_NATURAL );
+
+		// Build URL ensuring proper encoding
+		return self::BASE_URL . '?' . http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
 	}
 
 	/**

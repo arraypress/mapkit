@@ -42,6 +42,27 @@ abstract class Base {
 	protected int $zoom = 12;
 
 	/**
+	 * Minimum allowed zoom level
+	 *
+	 * Defines the minimum zoom level for the map service.
+	 * All map services typically support a minimum zoom of 1.
+	 *
+	 * @var int
+	 */
+	protected int $min_zoom = 1;
+
+	/**
+	 * Maximum allowed zoom level
+	 *
+	 * Defines the maximum zoom level for the map service.
+	 * Most map services support up to zoom level 20, but this
+	 * can be overridden by specific providers.
+	 *
+	 * @var int
+	 */
+	protected int $max_zoom = 20;
+
+	/**
 	 * Map display type (e.g., roadmap, satellite)
 	 *
 	 * @var string
@@ -71,7 +92,7 @@ abstract class Base {
 	 * @return self
 	 */
 	public function zoom( int $level ): self {
-		$this->zoom = max( 1, min( 20, $level ) );
+		$this->zoom = max( $this->min_zoom, min( $this->max_zoom, $level ) );
 
 		return $this;
 	}
