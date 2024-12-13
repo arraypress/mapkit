@@ -1,0 +1,51 @@
+{
+  "name": "arraypress/mapkit",
+  "description": "A PHP library for generating map URLs for various services including Google Maps, Apple Maps, Bing Maps, OpenStreetMap, Waze, and Yandex Maps, with support for coordinates, directions, and search functionality.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/arraypress/mapkit/",
+  "authors": [
+    {
+      "name": "David Sherlock",
+      "homepage": "https://arraypress.com/"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArrayPress\\MapKit\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "support": {
+    "issues": "https://github.com/arraypress/mapkit/issues",
+    "source": "https://github.com/arraypress/mapkit"
+  },
+  "keywords": [
+    "maps",
+    "google-maps",
+    "apple-maps",
+    "bing-maps",
+    "openstreetmap",
+    "waze",
+    "yandex-maps",
+    "navigation",
+    "directions",
+    "coordinates",
+    "location",
+    "geocoding",
+    "routing",
+    "wordpress",
+    "map-links",
+    "map-services",
+    "map-integration",
+    "location-sharing"
+  ]
+}
