@@ -2,6 +2,16 @@
 /**
  * MapKit Google Maps Service
  *
+ * This class provides a fluent interface for building Google Maps URLs and embeds.
+ * It supports various features including:
+ * - Coordinate-based maps with zoom levels
+ * - Search queries with place IDs
+ * - Directions with waypoints and travel modes
+ * - Street View panoramas
+ * - Map types and layers
+ * - Iframe embeds
+ * - Language and region preferences
+ *
  * @package     ArrayPress/MapKit
  * @copyright   Copyright (c) 2024, ArrayPress Limited
  * @license     GPL2+
@@ -14,28 +24,79 @@ namespace ArrayPress\MapKit\Providers;
 /**
  * Class Google
  *
- * Google Maps URL builder implementation.
- * Provides methods for building Google Maps URLs with various parameters
- * including search, directions, map display, and Street View panoramas.
+ * Google Maps URL and embed builder implementation.
  */
 class Google extends Base {
 
 	/**
 	 * Base URL for Google Maps
-	 *
-	 * @var string
 	 */
 	private const BASE_URL = 'https://www.google.com/maps';
 
 	/**
-	 * Search query for location search
+	 * Valid travel modes for directions
+	 */
+	private const TRAVEL_MODES = [
+		'driving',
+		'walking',
+		'bicycling',
+		'transit'
+	];
+
+	/**
+	 * Valid features that can be avoided in routes
+	 */
+	private const AVOIDABLE_FEATURES = [
+		'tolls',
+		'highways',
+		'ferries'
+	];
+
+	/**
+	 * Valid base map types
+	 */
+	private const MAP_TYPES = [
+		'roadmap',
+		'satellite',
+		'terrain'
+	];
+
+	/**
+	 * Valid map layers
+	 */
+	private const MAP_LAYERS = [
+		'none',
+		'transit',
+		'traffic',
+		'bicycling'
+	];
+
+	/**
+	 * Maximum number of allowed waypoints
+	 */
+	private const MAX_WAYPOINTS = 9;
+
+	/**
+	 * Street View constraints
+	 */
+	private const STREET_VIEW_LIMITS = [
+		'heading_min' => - 180,
+		'heading_max' => 360,
+		'pitch_min'   => - 90,
+		'pitch_max'   => 90,
+		'fov_min'     => 10,
+		'fov_max'     => 100
+	];
+
+	/**
+	 * Search query string for looking up locations
 	 *
 	 * @var string|null
 	 */
 	protected ?string $query = null;
 
 	/**
-	 * Place ID for the search query
+	 * Place ID for more accurate search results
 	 *
 	 * @var string|null
 	 */
@@ -49,7 +110,7 @@ class Google extends Base {
 	protected ?string $origin = null;
 
 	/**
-	 * Place ID for the origin
+	 * Place ID for the origin location
 	 *
 	 * @var string|null
 	 */
@@ -63,7 +124,7 @@ class Google extends Base {
 	protected ?string $destination = null;
 
 	/**
-	 * Place ID for the destination
+	 * Place ID for the destination location
 	 *
 	 * @var string|null
 	 */
@@ -77,7 +138,7 @@ class Google extends Base {
 	protected string $travel_mode = 'driving';
 
 	/**
-	 * Waypoints for directions
+	 * Waypoints for the route
 	 *
 	 * @var array
 	 */
@@ -91,28 +152,28 @@ class Google extends Base {
 	protected array $waypoint_place_ids = [];
 
 	/**
-	 * Features to avoid in directions
+	 * Features to avoid in route calculation
 	 *
 	 * @var array
 	 */
 	protected array $avoid = [];
 
 	/**
-	 * Whether to launch navigation mode
+	 * Navigation mode flag
 	 *
 	 * @var bool
 	 */
 	protected bool $navigate = false;
 
 	/**
-	 * Map type (roadmap, satellite, terrain)
+	 * Base map type
 	 *
 	 * @var string
 	 */
 	protected string $basemap = 'roadmap';
 
 	/**
-	 * Map layer (none, transit, traffic, bicycling)
+	 * Map overlay layer
 	 *
 	 * @var string
 	 */
@@ -147,10 +208,45 @@ class Google extends Base {
 	protected ?int $fov = null;
 
 	/**
+	 * Interface language code (ISO 639-1)
+	 *
+	 * @var string|null
+	 */
+	protected ?string $language = null;
+
+	/**
+	 * Region code (ISO 3166-1 alpha-2)
+	 *
+	 * @var string|null
+	 */
+	protected ?string $region = null;
+
+	/**
+	 * Embed mode flag
+	 *
+	 * @var bool
+	 */
+	protected bool $is_embed = false;
+
+	/**
+	 * Embed width in pixels
+	 *
+	 * @var int
+	 */
+	protected int $embed_width = 600;
+
+	/**
+	 * Embed height in pixels
+	 *
+	 * @var int
+	 */
+	protected int $embed_height = 450;
+
+	/**
 	 * Set a search query
 	 *
-	 * @param string      $query    Location or business name to search for
-	 * @param string|null $place_id Optional place ID for more accurate results
+	 * @param string      $query    Location or business to search for
+	 * @param string|null $place_id Optional Google Place ID
 	 *
 	 * @return self
 	 */
@@ -165,7 +261,7 @@ class Google extends Base {
 	 * Set the starting point for directions
 	 *
 	 * @param string      $address  Starting address or location
-	 * @param string|null $place_id Optional place ID for more accurate results
+	 * @param string|null $place_id Optional Google Place ID
 	 *
 	 * @return self
 	 */
@@ -180,7 +276,7 @@ class Google extends Base {
 	 * Set the destination point for directions
 	 *
 	 * @param string      $address  Destination address or location
-	 * @param string|null $place_id Optional place ID for more accurate results
+	 * @param string|null $place_id Optional Google Place ID
 	 *
 	 * @return self
 	 */
@@ -194,13 +290,12 @@ class Google extends Base {
 	/**
 	 * Set the travel mode for directions
 	 *
-	 * @param string $mode Travel mode ('driving', 'walking', 'bicycling', 'transit')
+	 * @param string $mode Travel mode (driving, walking, bicycling, transit)
 	 *
 	 * @return self
 	 */
 	public function travel_mode( string $mode ): self {
-		$valid_modes       = [ 'driving', 'walking', 'bicycling', 'transit' ];
-		$this->travel_mode = in_array( $mode, $valid_modes ) ? $mode : 'driving';
+		$this->travel_mode = in_array( $mode, self::TRAVEL_MODES ) ? $mode : 'driving';
 
 		return $this;
 	}
@@ -209,12 +304,12 @@ class Google extends Base {
 	 * Add waypoints to the route
 	 *
 	 * @param array $waypoints Array of addresses/locations
-	 * @param array $place_ids Optional array of place IDs matching waypoints
+	 * @param array $place_ids Optional array of place IDs
 	 *
 	 * @return self
 	 */
 	public function waypoints( array $waypoints, array $place_ids = [] ): self {
-		$this->waypoints = array_slice( $waypoints, 0, 9 ); // Maximum 9 waypoints
+		$this->waypoints = array_slice( $waypoints, 0, self::MAX_WAYPOINTS );
 		if ( ! empty( $place_ids ) ) {
 			$this->waypoint_place_ids = array_slice( $place_ids, 0, count( $this->waypoints ) );
 		}
@@ -225,13 +320,12 @@ class Google extends Base {
 	/**
 	 * Set features to avoid in directions
 	 *
-	 * @param array $features Features to avoid ('tolls', 'highways', 'ferries')
+	 * @param array $features Features to avoid (tolls, highways, ferries)
 	 *
 	 * @return self
 	 */
 	public function avoid( array $features ): self {
-		$valid_features = [ 'tolls', 'highways', 'ferries' ];
-		$this->avoid    = array_intersect( $features, $valid_features );
+		$this->avoid = array_intersect( $features, self::AVOIDABLE_FEATURES );
 
 		return $this;
 	}
@@ -239,7 +333,7 @@ class Google extends Base {
 	/**
 	 * Enable turn-by-turn navigation mode
 	 *
-	 * @param bool $enable Whether to enable navigation mode
+	 * @param bool $enable Whether to enable navigation
 	 *
 	 * @return self
 	 */
@@ -250,29 +344,69 @@ class Google extends Base {
 	}
 
 	/**
-	 * Set the map display type
+	 * Set the base map display type
 	 *
-	 * @param string $type Map type ('roadmap', 'satellite', 'terrain')
+	 * @param string $type Map type (roadmap, satellite, terrain)
 	 *
 	 * @return self
 	 */
 	public function basemap( string $type ): self {
-		$valid_types   = [ 'roadmap', 'satellite', 'terrain' ];
-		$this->basemap = in_array( $type, $valid_types ) ? $type : 'roadmap';
+		$this->basemap = in_array( $type, self::MAP_TYPES ) ? $type : 'roadmap';
 
 		return $this;
 	}
 
 	/**
-	 * Set the map layer
+	 * Set the map overlay layer
 	 *
-	 * @param string $type Layer type ('none', 'transit', 'traffic', 'bicycling')
+	 * @param string $type Layer type (none, transit, traffic, bicycling)
 	 *
 	 * @return self
 	 */
 	public function layer( string $type ): self {
-		$valid_types = [ 'none', 'transit', 'traffic', 'bicycling' ];
-		$this->layer = in_array( $type, $valid_types ) ? $type : 'none';
+		$this->layer = in_array( $type, self::MAP_LAYERS ) ? $type : 'none';
+
+		return $this;
+	}
+
+	/**
+	 * Set interface language
+	 *
+	 * @param string $lang_code ISO 639-1 language code
+	 *
+	 * @return self
+	 */
+	public function language( string $lang_code ): self {
+		$this->language = strtolower( $lang_code );
+
+		return $this;
+	}
+
+	/**
+	 * Set region preference
+	 *
+	 * @param string $region_code ISO 3166-1 alpha-2 country code
+	 *
+	 * @return self
+	 */
+	public function region( string $region_code ): self {
+		$this->region = strtoupper( $region_code );
+
+		return $this;
+	}
+
+	/**
+	 * Configure for embed usage
+	 *
+	 * @param int $width  Width in pixels
+	 * @param int $height Height in pixels
+	 *
+	 * @return self
+	 */
+	public function as_embed( int $width = 600, int $height = 450 ): self {
+		$this->is_embed     = true;
+		$this->embed_width  = $width;
+		$this->embed_height = $height;
 
 		return $this;
 	}
@@ -281,25 +415,61 @@ class Google extends Base {
 	 * Set Street View panorama parameters
 	 *
 	 * @param string|null $pano_id Panorama ID
-	 * @param int|null    $heading Compass heading (degrees)
-	 * @param int|null    $pitch   Vertical angle (degrees)
-	 * @param int|null    $fov     Field of view (degrees)
+	 * @param int|null    $heading Compass heading (-180 to 360)
+	 * @param int|null    $pitch   Vertical angle (-90 to 90)
+	 * @param int|null    $fov     Field of view (10 to 100)
 	 *
 	 * @return self
 	 */
 	public function street_view( ?string $pano_id = null, ?int $heading = null, ?int $pitch = null, ?int $fov = null ): self {
-		$this->pano    = $pano_id;
-		$this->heading = $heading !== null ? max( - 180, min( 360, $heading ) ) : null;
-		$this->pitch   = $pitch !== null ? max( - 90, min( 90, $pitch ) ) : null;
-		$this->fov     = $fov !== null ? max( 10, min( 100, $fov ) ) : null;
+		$this->pano = $pano_id;
+
+		// Constrain values within valid ranges
+		if ( $heading !== null ) {
+			$this->heading = max( self::STREET_VIEW_LIMITS['heading_min'],
+				min( self::STREET_VIEW_LIMITS['heading_max'], $heading ) );
+		}
+
+		if ( $pitch !== null ) {
+			$this->pitch = max( self::STREET_VIEW_LIMITS['pitch_min'],
+				min( self::STREET_VIEW_LIMITS['pitch_max'], $pitch ) );
+		}
+
+		if ( $fov !== null ) {
+			$this->fov = max( self::STREET_VIEW_LIMITS['fov_min'],
+				min( self::STREET_VIEW_LIMITS['fov_max'], $fov ) );
+		}
 
 		return $this;
 	}
 
 	/**
+	 * Get embed HTML code
+	 *
+	 * @return string|null HTML iframe code or null if invalid
+	 */
+	public function get_embed(): ?string {
+		if ( ! $this->is_embed ) {
+			return null;
+		}
+
+		$url = $this->get_url();
+		if ( ! $url ) {
+			return null;
+		}
+
+		return sprintf(
+			'<iframe width="%d" height="%d" style="border:0" loading="lazy" allowfullscreen src="%s"></iframe>',
+			$this->embed_width,
+			$this->embed_height,
+			esc_url( $url )
+		);
+	}
+
+	/**
 	 * Generate the Google Maps URL
 	 *
-	 * @return string|null The generated URL or null if required parameters are missing
+	 * @return string|null The generated URL or null if invalid
 	 */
 	public function get_url(): ?string {
 		// Street View panorama
@@ -339,6 +509,8 @@ class Google extends Base {
 		if ( $this->query_place_id ) {
 			$params['query_place_id'] = $this->query_place_id;
 		}
+
+		$this->add_common_params( $params );
 
 		return self::BASE_URL . '/search/?' . http_build_query( $params );
 	}
@@ -384,6 +556,8 @@ class Google extends Base {
 			$params['dir_action'] = 'navigate';
 		}
 
+		$this->add_common_params( $params );
+
 		return self::BASE_URL . '/dir/?' . http_build_query( $params );
 	}
 
@@ -393,7 +567,12 @@ class Google extends Base {
 	 * @return string The generated map URL
 	 */
 	private function get_map_url(): string {
-		return self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
+		$params = [];
+		$this->add_common_params( $params );
+
+		$base_url = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
+
+		return empty( $params ) ? $base_url : $base_url . '?' . http_build_query( $params );
 	}
 
 	/**
@@ -425,7 +604,36 @@ class Google extends Base {
 			$params['fov'] = $this->fov;
 		}
 
-		return $base . ( $params ? '?' . http_build_query( $params ) : '' );
+		$this->add_common_params( $params );
+
+		return $base . ( ! empty( $params ) ? '?' . http_build_query( $params ) : '' );
+	}
+
+	/**
+	 * Add common parameters to the URL
+	 *
+	 * @param array $params Reference to the parameters array
+	 */
+	private function add_common_params( array &$params ): void {
+		// Add base map type if not default
+		if ( $this->basemap !== 'roadmap' ) {
+			$params['map_type'] = $this->basemap;
+		}
+
+		// Add layer if not none
+		if ( $this->layer !== 'none' ) {
+			$params['layer'] = $this->layer;
+		}
+
+		// Add language if set
+		if ( $this->language ) {
+			$params['hl'] = $this->language;
+		}
+
+		// Add region if set
+		if ( $this->region ) {
+			$params['gl'] = $this->region;
+		}
 	}
 
 }
