@@ -12,7 +12,7 @@ declare( strict_types=1 );
 namespace ArrayPress\MapKit\Providers;
 
 /**
- * Class AppleMaps
+ * Class Apple
  *
  * Apple Maps URL builder implementation.
  * Provides methods for building Apple Maps URLs with various parameters
@@ -26,6 +26,13 @@ class Apple extends Base {
 	 * @var string
 	 */
 	private const BASE_URL = 'https://maps.apple.com/';
+
+	/**
+	 * Search query
+	 *
+	 * @var string|null
+	 */
+	private ?string $query = null;
 
 	/**
 	 * Starting point for directions
@@ -49,28 +56,67 @@ class Apple extends Base {
 	private string $transport_type = 'automobile';
 
 	/**
-	 * Search query for location search
+	 * Address for location display
 	 *
 	 * @var string|null
 	 */
-	private ?string $search_query = null;
+	private ?string $address = null;
 
 	/**
-	 * Map display mode
+	 * Map type
 	 *
 	 * @var string
 	 */
-	private string $map_mode = 'standard';
+	protected string $map_type = 'm';
 
 	/**
-	 * Set the search query
+	 * Search location coordinates
 	 *
-	 * @param string $query Location or business name to search for
+	 * @var array|null
+	 */
+	private ?array $search_location = null;
+
+	/**
+	 * Search location span
+	 *
+	 * @var array|null
+	 */
+	private ?array $search_span = null;
+
+	/**
+	 * Near location hint
+	 *
+	 * @var array|null
+	 */
+	private ?array $near_location = null;
+
+	/**
+	 * Set a search query
+	 *
+	 * @param string     $query Search query or label
+	 * @param array|null $near  Optional nearby location coordinates [lat, lon]
 	 *
 	 * @return self
 	 */
-	public function search( string $query ): self {
-		$this->search_query = $query;
+	public function search( string $query, ?array $near = null ): self {
+		$this->query = $query;
+		if ( $near && count( $near ) === 2 ) {
+			$this->near_location = $near;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Set a specific address to display
+	 *
+	 * @param string $address Address string
+	 *
+	 * @return self
+	 */
+	public function address( string $address ): self {
+		$this->address = $address;
+
 		return $this;
 	}
 
@@ -83,6 +129,7 @@ class Apple extends Base {
 	 */
 	public function from( string $address ): self {
 		$this->origin = $address;
+
 		return $this;
 	}
 
@@ -95,19 +142,26 @@ class Apple extends Base {
 	 */
 	public function to( string $address ): self {
 		$this->destination = $address;
+
 		return $this;
 	}
 
 	/**
-	 * Set the map display mode
+	 * Set map type
 	 *
-	 * @param string $mode Map display mode ('standard', 'satellite', 'hybrid', 'transit')
+	 * @param string $type Map type ('standard', 'satellite', 'hybrid', 'transit')
 	 *
 	 * @return self
 	 */
-	public function display_mode( string $mode ): self {
-		$valid_modes = ['standard', 'satellite', 'hybrid', 'transit'];
-		$this->map_mode = in_array( $mode, $valid_modes ) ? $mode : 'standard';
+	public function map_type( string $type ): self {
+		$map_types      = [
+			'standard'  => 'm',
+			'satellite' => 'k',
+			'hybrid'    => 'h',
+			'transit'   => 'r'
+		];
+		$this->map_type = $map_types[ $type ] ?? 'm';
+
 		return $this;
 	}
 
@@ -119,65 +173,81 @@ class Apple extends Base {
 	 * @return self
 	 */
 	public function transport_type( string $type ): self {
-		$valid_types = ['automobile', 'walking', 'transit'];
+		$valid_types          = [ 'automobile', 'walking', 'transit' ];
 		$this->transport_type = in_array( $type, $valid_types ) ? $type : 'automobile';
+
+		return $this;
+	}
+
+	/**
+	 * Set search location and optional span
+	 *
+	 * @param float      $latitude  Latitude
+	 * @param float      $longitude Longitude
+	 * @param float|null $lat_span  Optional latitude span
+	 * @param float|null $lon_span  Optional longitude span
+	 *
+	 * @return self
+	 */
+	public function search_location( float $latitude, float $longitude, ?float $lat_span = null, ?float $lon_span = null ): self {
+		$this->search_location = [ $latitude, $longitude ];
+		if ( $lat_span !== null && $lon_span !== null ) {
+			$this->search_span = [ $lat_span, $lon_span ];
+		}
+
 		return $this;
 	}
 
 	/**
 	 * Generate the Apple Maps URL
 	 *
-	 * Generates a URL based on the set parameters. Will create either a search URL,
-	 * coordinates URL, or a directions URL depending on the parameters set.
-	 *
 	 * @return string|null The generated URL or null if required parameters are missing
 	 */
 	public function get_url(): ?string {
-		// Check if we're generating a directions URL
-		if ( isset( $this->origin, $this->destination ) ) {
+		$params = [];
+
+		// Map type
+		if ( $this->map_type !== 'm' ) {
+			$params['t'] = $this->map_type;
+		}
+
+		// Handle different URL types
+		if ( $this->destination ) {
+			// Directions URL
 			return $this->get_directions_url();
 		}
 
-		// Check if we're generating a search URL
-		if ( isset( $this->search_query ) ) {
-			return $this->get_search_url();
+		if ( $this->query ) {
+			// Search URL
+			$params['q'] = $this->query;
+
+			if ( $this->near_location ) {
+				$params['near'] = implode( ',', $this->near_location );
+			}
 		}
 
-		// Fall back to coordinates URL if available
 		if ( $this->validate() ) {
-			return $this->get_coordinates_url();
+			// Coordinates URL with optional label
+			$params['ll'] = "{$this->latitude},{$this->longitude}";
+			if ( $this->zoom !== 12 ) {
+				$params['z'] = $this->zoom;
+			}
 		}
 
-		return null;
-	}
+		if ( $this->address && ! isset( $params['ll'] ) ) {
+			// Address URL
+			$params['address'] = $this->address;
+		}
 
-	/**
-	 * Generate a coordinates-based URL
-	 *
-	 * @return string The generated coordinates URL
-	 */
-	private function get_coordinates_url(): string {
-		$params = [
-			'll'     => "{$this->latitude},{$this->longitude}",
-			'z'      => $this->zoom,
-			't'      => $this->map_mode,
-		];
+		if ( $this->search_location ) {
+			// Search location
+			$params['sll'] = implode( ',', $this->search_location );
+			if ( $this->search_span ) {
+				$params['sspn'] = implode( ',', $this->search_span );
+			}
+		}
 
-		return self::BASE_URL . '?' . http_build_query( $params );
-	}
-
-	/**
-	 * Generate a search URL
-	 *
-	 * @return string The generated search URL
-	 */
-	private function get_search_url(): string {
-		$params = [
-			'q' => $this->search_query,
-			't' => $this->map_mode,
-		];
-
-		return self::BASE_URL . '?' . http_build_query( $params );
+		return empty( $params ) ? null : self::BASE_URL . '?' . http_build_query( $params );
 	}
 
 	/**
@@ -187,11 +257,17 @@ class Apple extends Base {
 	 */
 	private function get_directions_url(): string {
 		$params = [
-			'saddr'      => $this->origin,
-			'daddr'      => $this->destination,
-			'dirflg'     => $this->get_directions_flag(),
-			't'          => $this->map_mode,
+			'daddr'  => $this->destination,
+			'dirflg' => $this->get_directions_flag()
 		];
+
+		if ( $this->map_type !== 'm' ) {
+			$params['t'] = $this->map_type;
+		}
+
+		if ( $this->origin ) {
+			$params['saddr'] = $this->origin;
+		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
 	}
