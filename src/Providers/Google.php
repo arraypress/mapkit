@@ -29,6 +29,11 @@ namespace ArrayPress\MapKit\Providers;
 class Google extends Base {
 
 	/**
+	 * API version parameter
+	 */
+	private const API_VERSION = '1';
+
+	/**
 	 * Base URL for Google Maps
 	 */
 	private const BASE_URL = 'https://www.google.com/maps';
@@ -521,44 +526,50 @@ class Google extends Base {
 	 * @return string The generated directions URL
 	 */
 	private function get_directions_url(): string {
-		$params = [ 'api' => '1' ];
+		$params = [];
 
-		if ( $this->origin ) {
+		if ($this->origin) {
 			$params['origin'] = $this->origin;
-			if ( $this->origin_place_id ) {
+			if ($this->origin_place_id) {
 				$params['origin_place_id'] = $this->origin_place_id;
 			}
 		}
 
-		if ( $this->destination ) {
+		if ($this->destination) {
 			$params['destination'] = $this->destination;
-			if ( $this->destination_place_id ) {
+			if ($this->destination_place_id) {
 				$params['destination_place_id'] = $this->destination_place_id;
 			}
 		}
 
-		if ( $this->travel_mode !== 'driving' ) {
-			$params['travelmode'] = $this->travel_mode;
+		if ($this->travel_mode !== 'driving') {
+			$params['travelmode'] = strtoupper($this->travel_mode);
 		}
 
-		if ( ! empty( $this->waypoints ) ) {
-			$params['waypoints'] = implode( '|', $this->waypoints );
-			if ( ! empty( $this->waypoint_place_ids ) ) {
-				$params['waypoint_place_ids'] = implode( '|', $this->waypoint_place_ids );
+		if (!empty($this->waypoints)) {
+			$params['waypoints'] = implode('|', $this->waypoints);
+			if (!empty($this->waypoint_place_ids)) {
+				$params['waypoint_place_ids'] = implode('|', $this->waypoint_place_ids);
 			}
 		}
 
-		if ( ! empty( $this->avoid ) ) {
-			$params['avoid'] = implode( ',', $this->avoid );
+		if (!empty($this->avoid)) {
+			$params['avoid'] = implode(',', $this->avoid);
 		}
 
-		if ( $this->navigate ) {
+		if ($this->navigate) {
 			$params['dir_action'] = 'navigate';
 		}
 
-		$this->add_common_params( $params );
+		$this->add_common_params($params);
 
-		return self::BASE_URL . '/dir/?' . http_build_query( $params );
+		// URL format should be: /dir/origin/destination/[@lat,lng]
+		$base_url = self::BASE_URL . '/dir/';
+		if ($this->latitude !== null && $this->longitude !== null) {
+			$base_url .= '@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
+		}
+
+		return $base_url . (!empty($params) ? '?' . http_build_query($params) : '');
 	}
 
 	/**
@@ -634,6 +645,50 @@ class Google extends Base {
 		if ( $this->region ) {
 			$params['gl'] = $this->region;
 		}
+	}
+
+	/**
+	 * Reset all properties to their default values.
+	 * Useful when reusing the same instance for multiple URL generations.
+	 *
+	 * @return self
+	 */
+	public function reset(): self {
+		// Reset search related
+		$this->query          = null;
+		$this->query_place_id = null;
+
+		// Reset directions related
+		$this->origin               = null;
+		$this->origin_place_id      = null;
+		$this->destination          = null;
+		$this->destination_place_id = null;
+		$this->travel_mode          = 'driving';
+		$this->waypoints            = [];
+		$this->waypoint_place_ids   = [];
+		$this->avoid                = [];
+		$this->navigate             = false;
+
+		// Reset map display
+		$this->basemap = 'roadmap';
+		$this->layer   = 'none';
+
+		// Reset Street View
+		$this->pano    = null;
+		$this->heading = null;
+		$this->pitch   = null;
+		$this->fov     = null;
+
+		// Reset language/region
+		$this->language = null;
+		$this->region   = null;
+
+		// Reset embed
+		$this->is_embed     = false;
+		$this->embed_width  = 600;
+		$this->embed_height = 450;
+
+		return $this;
 	}
 
 }
