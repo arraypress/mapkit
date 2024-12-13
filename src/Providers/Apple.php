@@ -176,12 +176,12 @@ class Apple extends Base {
 	/**
 	 * Set the transportation type
 	 *
-	 * @param string $type Transport type ('automobile', 'walking', 'transit')
+	 * @param string $type Transport type ('automobile', 'walking', 'transit', 'bicycle')
 	 *
 	 * @return self
 	 */
 	public function transport_type( string $type ): self {
-		$valid_types          = [ 'automobile', 'walking', 'transit' ];
+		$valid_types          = [ 'automobile', 'walking', 'transit', 'bicycle' ];
 		$this->transport_type = in_array( $type, $valid_types ) ? $type : 'automobile';
 
 		return $this;
@@ -325,6 +325,8 @@ class Apple extends Base {
 				return 'w';
 			case 'transit':
 				return 'r';
+			case 'bicycle':
+				return 'b';
 			default:
 				return 'd';
 		}
