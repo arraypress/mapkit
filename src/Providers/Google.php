@@ -32,119 +32,119 @@ class Google extends Base {
 	 *
 	 * @var string|null
 	 */
-	private ?string $query = null;
+	protected ?string $query = null;
 
 	/**
 	 * Place ID for the search query
 	 *
 	 * @var string|null
 	 */
-	private ?string $query_place_id = null;
+	protected ?string $query_place_id = null;
 
 	/**
 	 * Starting point for directions
 	 *
 	 * @var string|null
 	 */
-	private ?string $origin = null;
+	protected ?string $origin = null;
 
 	/**
 	 * Place ID for the origin
 	 *
 	 * @var string|null
 	 */
-	private ?string $origin_place_id = null;
+	protected ?string $origin_place_id = null;
 
 	/**
 	 * Destination point for directions
 	 *
 	 * @var string|null
 	 */
-	private ?string $destination = null;
+	protected ?string $destination = null;
 
 	/**
 	 * Place ID for the destination
 	 *
 	 * @var string|null
 	 */
-	private ?string $destination_place_id = null;
+	protected ?string $destination_place_id = null;
 
 	/**
 	 * Travel mode for directions
 	 *
 	 * @var string
 	 */
-	private string $travel_mode = 'driving';
+	protected string $travel_mode = 'driving';
 
 	/**
 	 * Waypoints for directions
 	 *
 	 * @var array
 	 */
-	private array $waypoints = [];
+	protected array $waypoints = [];
 
 	/**
 	 * Place IDs for waypoints
 	 *
 	 * @var array
 	 */
-	private array $waypoint_place_ids = [];
+	protected array $waypoint_place_ids = [];
 
 	/**
 	 * Features to avoid in directions
 	 *
 	 * @var array
 	 */
-	private array $avoid = [];
+	protected array $avoid = [];
 
 	/**
 	 * Whether to launch navigation mode
 	 *
 	 * @var bool
 	 */
-	private bool $navigate = false;
+	protected bool $navigate = false;
 
 	/**
 	 * Map type (roadmap, satellite, terrain)
 	 *
 	 * @var string
 	 */
-	private string $basemap = 'roadmap';
+	protected string $basemap = 'roadmap';
 
 	/**
 	 * Map layer (none, transit, traffic, bicycling)
 	 *
 	 * @var string
 	 */
-	private string $layer = 'none';
+	protected string $layer = 'none';
 
 	/**
 	 * Street View panorama ID
 	 *
 	 * @var string|null
 	 */
-	private ?string $pano = null;
+	protected ?string $pano = null;
 
 	/**
 	 * Street View heading (compass direction)
 	 *
 	 * @var int|null
 	 */
-	private ?int $heading = null;
+	protected ?int $heading = null;
 
 	/**
 	 * Street View pitch (vertical angle)
 	 *
 	 * @var int|null
 	 */
-	private ?int $pitch = null;
+	protected ?int $pitch = null;
 
 	/**
 	 * Street View field of view
 	 *
 	 * @var int|null
 	 */
-	private ?int $fov = null;
+	protected ?int $fov = null;
 
 	/**
 	 * Set a search query
@@ -194,12 +194,12 @@ class Google extends Base {
 	/**
 	 * Set the travel mode for directions
 	 *
-	 * @param string $mode Travel mode ('driving', 'walking', 'bicycling', 'transit', 'two-wheeler')
+	 * @param string $mode Travel mode ('driving', 'walking', 'bicycling', 'transit')
 	 *
 	 * @return self
 	 */
 	public function travel_mode( string $mode ): self {
-		$valid_modes       = [ 'driving', 'walking', 'bicycling', 'transit', 'two-wheeler' ];
+		$valid_modes       = [ 'driving', 'walking', 'bicycling', 'transit' ];
 		$this->travel_mode = in_array( $mode, $valid_modes ) ? $mode : 'driving';
 
 		return $this;
@@ -340,7 +340,7 @@ class Google extends Base {
 			$params['query_place_id'] = $this->query_place_id;
 		}
 
-		return self::BASE_URL . '/search?' . http_build_query( $params );
+		return self::BASE_URL . '/search/?' . http_build_query( $params );
 	}
 
 	/**
@@ -384,7 +384,7 @@ class Google extends Base {
 			$params['dir_action'] = 'navigate';
 		}
 
-		return self::BASE_URL . '/dir?' . http_build_query( $params );
+		return self::BASE_URL . '/dir/?' . http_build_query( $params );
 	}
 
 	/**
@@ -393,19 +393,7 @@ class Google extends Base {
 	 * @return string The generated map URL
 	 */
 	private function get_map_url(): string {
-		$params = [
-			'api'        => '1',
-			'map_action' => 'map',
-			'center'     => "{$this->latitude},{$this->longitude}",
-			'zoom'       => $this->zoom,
-			'basemap'    => $this->basemap
-		];
-
-		if ( $this->layer !== 'none' ) {
-			$params['layer'] = $this->layer;
-		}
-
-		return self::BASE_URL . '/@?' . http_build_query( $params );
+		return self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
 	}
 
 	/**
@@ -414,15 +402,17 @@ class Google extends Base {
 	 * @return string The generated Street View URL
 	 */
 	private function get_street_view_url(): string {
-		$params = [
-			'api'        => '1',
-			'map_action' => 'pano'
-		];
-
 		if ( $this->pano ) {
-			$params['pano'] = $this->pano;
-		} elseif ( $this->validate() ) {
-			$params['viewpoint'] = "{$this->latitude},{$this->longitude}";
+			$base   = self::BASE_URL . '/place/?api=1';
+			$params = [
+				'pano' => $this->pano
+			];
+		} else {
+			$base   = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude;
+			$params = [
+				'api'        => '1',
+				'map_action' => 'pano'
+			];
 		}
 
 		if ( $this->heading !== null ) {
@@ -435,6 +425,7 @@ class Google extends Base {
 			$params['fov'] = $this->fov;
 		}
 
-		return self::BASE_URL . '/@?' . http_build_query( $params );
+		return $base . ( $params ? '?' . http_build_query( $params ) : '' );
 	}
+
 }

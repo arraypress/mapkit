@@ -32,63 +32,75 @@ class Apple extends Base {
 	 *
 	 * @var string|null
 	 */
-	private ?string $query = null;
+	protected ?string $query = null;
 
 	/**
 	 * Starting point for directions
 	 *
 	 * @var string|null
 	 */
-	private ?string $origin = null;
+	protected ?string $origin = null;
 
 	/**
 	 * Destination point for directions
 	 *
 	 * @var string|null
 	 */
-	private ?string $destination = null;
+	protected ?string $destination = null;
 
 	/**
 	 * Transportation type for directions
 	 *
 	 * @var string
 	 */
-	private string $transport_type = 'automobile';
+	protected string $transport_type = 'automobile';
 
 	/**
 	 * Address for location display
 	 *
 	 * @var string|null
 	 */
-	private ?string $address = null;
+	protected ?string $address = null;
 
 	/**
 	 * Map type
 	 *
 	 * @var string
 	 */
-	protected string $map_type = 'm';
+	protected string $map_type = 'standard';
 
 	/**
 	 * Search location coordinates
 	 *
 	 * @var array|null
 	 */
-	private ?array $search_location = null;
+	protected ?array $search_location = null;
 
 	/**
 	 * Search location span
 	 *
 	 * @var array|null
 	 */
-	private ?array $search_span = null;
+	protected ?array $search_span = null;
 
 	/**
 	 * Near location hint
 	 *
 	 * @var array|null
 	 */
-	private ?array $near_location = null;
+	protected ?array $near_location = null;
+
+	/**
+	 * Map type translation array
+	 *
+	 * @var array
+	 */
+	private array $map_type_codes = [
+		'standard'  => 'm',
+		'satellite' => 'k',
+		'hybrid'    => 'h',
+		'transit'   => 'r'
+	];
 
 	/**
 	 * Set a search query
@@ -154,13 +166,9 @@ class Apple extends Base {
 	 * @return self
 	 */
 	public function map_type( string $type ): self {
-		$map_types      = [
-			'standard'  => 'm',
-			'satellite' => 'k',
-			'hybrid'    => 'h',
-			'transit'   => 'r'
-		];
-		$this->map_type = $map_types[ $type ] ?? 'm';
+		if ( isset( $this->map_type_codes[ $type ] ) ) {
+			$this->map_type = $type;
+		}
 
 		return $this;
 	}
@@ -206,11 +214,6 @@ class Apple extends Base {
 	public function get_url(): ?string {
 		$params = [];
 
-		// Map type
-		if ( $this->map_type !== 'm' ) {
-			$params['t'] = $this->map_type;
-		}
-
 		// Handle different URL types
 		if ( $this->destination ) {
 			// Directions URL
@@ -219,35 +222,73 @@ class Apple extends Base {
 
 		if ( $this->query ) {
 			// Search URL
-			$params['q'] = $this->query;
-
-			if ( $this->near_location ) {
-				$params['near'] = implode( ',', $this->near_location );
-			}
+			return $this->get_search_url();
 		}
 
 		if ( $this->validate() ) {
-			// Coordinates URL with optional label
-			$params['ll'] = "{$this->latitude},{$this->longitude}";
-			if ( $this->zoom !== 12 ) {
-				$params['z'] = $this->zoom;
-			}
+			// Coordinates URL
+			return $this->get_coordinates_url();
 		}
 
-		if ( $this->address && ! isset( $params['ll'] ) ) {
+		if ( $this->address ) {
 			// Address URL
 			$params['address'] = $this->address;
 		}
 
+		// Add map type if not standard
+		if ( $this->map_type !== 'standard' ) {
+			$params['t'] = $this->map_type_codes[ $this->map_type ];
+		}
+
+		return empty( $params ) ? null : self::BASE_URL . '?' . http_build_query( $params );
+	}
+
+	/**
+	 * Generate a coordinates-based URL
+	 *
+	 * @return string The generated coordinates URL
+	 */
+	private function get_coordinates_url(): string {
+		$params = [
+			'll' => "{$this->latitude},{$this->longitude}",
+			'z'  => $this->zoom
+		];
+
+		// Add map type if not standard
+		if ( $this->map_type !== 'standard' ) {
+			$params['t'] = $this->map_type_codes[ $this->map_type ];
+		}
+
+		return self::BASE_URL . '?' . http_build_query( $params );
+	}
+
+	/**
+	 * Generate a search URL
+	 *
+	 * @return string The generated search URL
+	 */
+	private function get_search_url(): string {
+		$params = [
+			'q' => $this->query
+		];
+
+		if ( $this->near_location ) {
+			$params['near'] = implode( ',', $this->near_location );
+		}
+
 		if ( $this->search_location ) {
-			// Search location
 			$params['sll'] = implode( ',', $this->search_location );
 			if ( $this->search_span ) {
 				$params['sspn'] = implode( ',', $this->search_span );
 			}
 		}
 
-		return empty( $params ) ? null : self::BASE_URL . '?' . http_build_query( $params );
+		// Add map type if not standard
+		if ( $this->map_type !== 'standard' ) {
+			$params['t'] = $this->map_type_codes[ $this->map_type ];
+		}
+
+		return self::BASE_URL . '?' . http_build_query( $params );
 	}
 
 	/**
@@ -261,12 +302,13 @@ class Apple extends Base {
 			'dirflg' => $this->get_directions_flag()
 		];
 
-		if ( $this->map_type !== 'm' ) {
-			$params['t'] = $this->map_type;
-		}
-
 		if ( $this->origin ) {
 			$params['saddr'] = $this->origin;
+		}
+
+		// Add map type if not standard
+		if ( $this->map_type !== 'standard' ) {
+			$params['t'] = $this->map_type_codes[ $this->map_type ];
 		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
@@ -287,4 +329,5 @@ class Apple extends Base {
 				return 'd';
 		}
 	}
+
 }
