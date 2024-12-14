@@ -87,14 +87,13 @@ class Google extends Provider {
 	];
 
 	/**
-	 * Valid base map types with their corresponding URL parameters
+	 * Valid base map types
 	 *
 	 * Available visualization types for the base map.
-	 * Each type maps to its corresponding URL parameter value.
 	 */
 	private const MAP_TYPES = [
-		'roadmap'   => 'm',     // Default view
-		'satellite' => 'k'    // Satellite imagery
+		'roadmap',    // Default view
+		'satellite'   // Satellite imagery
 	];
 
 	/**
@@ -564,7 +563,6 @@ class Google extends Provider {
 	 * Set the base map display type
 	 *
 	 * Changes the fundamental visualization of the map.
-	 * Uses special data parameters for proper Google Maps display.
 	 * Invalid types fall back to default 'roadmap'.
 	 *
 	 * @param string $type Map type ('roadmap', 'satellite')
@@ -572,7 +570,7 @@ class Google extends Provider {
 	 * @return self
 	 */
 	public function basemap( string $type ): self {
-		$this->basemap = array_key_exists( $type, self::MAP_TYPES )
+		$this->basemap = in_array( $type, self::MAP_TYPES, true )
 			? $type
 			: self::DEFAULTS['basemap'];
 
@@ -879,7 +877,7 @@ class Google extends Provider {
 		}
 
 		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
-			$params['t'] = self::MAP_TYPES[ $this->basemap ];
+			$params['basemap'] = $this->basemap;  // Just use the name directly
 		}
 
 		if ( $this->layer !== self::DEFAULTS['layer'] && $this->layer !== 'terrain' ) {
