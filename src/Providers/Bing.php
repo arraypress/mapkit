@@ -2,6 +2,14 @@
 /**
  * MapKit Bing Maps Service
  *
+ * This class provides a fluent interface for building Bing Maps URLs.
+ * It supports various features including:
+ * - Coordinate-based maps with zoom levels and styles
+ * - Search queries for locations and businesses
+ * - Directions with multiple travel modes
+ * - Birds eye views with scene and direction control
+ * - Traffic overlays
+ *
  * @package     ArrayPress/MapKit
  * @copyright   Copyright (c) 2024, ArrayPress Limited
  * @license     GPL2+
@@ -17,93 +25,180 @@ use ArrayPress\MapKit\Abstracts\Provider;
  * Class Bing
  *
  * Bing Maps URL builder implementation.
- * Provides methods for building Bing Maps URLs with various parameters
- * including search queries, directions, and map styles.
  */
 class Bing extends Provider {
 
 	/**
 	 * Base URL for Bing Maps
-	 *
-	 * @var string
 	 */
 	private const BASE_URL = 'https://bing.com/maps/default.aspx';
 
 	/**
-	 * Starting point for directions
+	 * Default values for various map parameters
 	 *
-	 * @var string|null
+	 * - zoom: Default zoom level (12 provides a good city-level view)
+	 * - travel_mode: Default mode of transportation
+	 * - style: Default map visualization type
+	 */
+	private const DEFAULTS = [
+		'zoom'        => 12,
+		'travel_mode' => 'driving',
+		'style'       => 'r'  // road view
+	];
+
+	/**
+	 * Valid map styles with their URL parameters
+	 *
+	 * Available visualization types for the map:
+	 * - r: Road view (default)
+	 * - a: Aerial view
+	 * - h: Aerial view with labels
+	 * - o: Birds eye view
+	 * - b: Birds eye view with labels
+	 */
+	private const MAP_STYLES = [
+		'road'             => 'r',
+		'aerial'           => 'a',
+		'aerial-labels'    => 'h',
+		'birds-eye'        => 'o',
+		'birds-eye-labels' => 'b'
+	];
+
+	/**
+	 * Valid travel modes with their URL parameters
+	 *
+	 * Available transportation modes:
+	 * - D: Driving (default)
+	 * - W: Walking
+	 * - T: Transit
+	 */
+	private const TRAVEL_MODES = [
+		'driving' => 'D',
+		'walking' => 'W',
+		'transit' => 'T'
+	];
+
+	/**
+	 * Valid time limit types
+	 *
+	 * Options for arrival/departure timing:
+	 * - D: Depart at specified time
+	 * - A: Arrive by specified time
+	 * - LT: Last train (Japan only)
+	 */
+	private const TIME_LIMITS = [
+		'depart'     => 'D',
+		'arrive'     => 'A',
+		'last_train' => 'LT'
+	];
+
+	/**
+	 * Search query string
+	 */
+	protected ?string $search_query = null;
+
+	/**
+	 * Search type (location or business)
+	 */
+	protected ?string $search_type = null;
+
+	/**
+	 * Search sort type
+	 * 0: Relevance, 1: Distance, 2: Rating
+	 */
+	protected int $sort_type = 0;
+
+	/**
+	 * Search results page number
+	 */
+	protected int $page = 1;
+
+	/**
+	 * Starting point for directions
 	 */
 	protected ?string $origin = null;
 
 	/**
 	 * Destination point for directions
-	 *
-	 * @var string|null
 	 */
 	protected ?string $destination = null;
 
 	/**
 	 * Travel mode for directions
-	 *
-	 * @var string
 	 */
-	protected string $travel_mode = 'driving';
+	protected string $travel_mode = self::DEFAULTS['travel_mode'];
 
 	/**
-	 * Search query for location search
-	 *
-	 * @var string|null
+	 * Map style/view type
 	 */
-	protected ?string $search_query = null;
+	protected string $style = self::DEFAULTS['style'];
 
 	/**
-	 * Map style
-	 *
-	 * @var string
-	 */
-	protected string $style = 'r';
-
-	/**
-	 * Traffic display option
-	 *
-	 * @var bool
+	 * Traffic display flag
 	 */
 	protected bool $show_traffic = false;
 
 	/**
-	 * Direction (for bird's eye view)
-	 *
-	 * @var int|null
+	 * Direction for birds eye view (0, 90, 180, 270)
 	 */
 	protected ?int $direction = null;
 
 	/**
-	 * Scene ID (for bird's eye view)
-	 *
-	 * @var string|null
+	 * Scene ID for birds eye view
 	 */
 	protected ?string $scene = null;
 
 	/**
 	 * Route options for directions
-	 *
-	 * @var array
 	 */
 	protected array $route_options = [
 		'route_type'   => 0,  // 0: Quickest time, 1: Shortest distance
-		'show_traffic' => 0, // 0: No traffic, 1: Show traffic
+		'show_traffic' => 0   // 0: No traffic, 1: Show traffic
 	];
 
 	/**
-	 * Set a search query
+	 * Time limit type for transit directions
+	 */
+	protected ?string $limit_type = null;
+
+	/**
+	 * Route time for transit directions (YYYYMMDDhhmm)
+	 */
+	protected ?string $route_time = null;
+
+	/**
+	 * Collection points for custom map data
+	 */
+	protected array $collection_points = [];
+
+	/**
+	 * Set a basic location search
 	 *
-	 * @param string $query Location or business name to search for
+	 * @param string $query Location to search for (address or place name)
 	 *
 	 * @return self
 	 */
 	public function search( string $query ): self {
 		$this->search_query = $query;
+		$this->search_type  = 'where1';
+
+		return $this;
+	}
+
+	/**
+	 * Set a business category search
+	 *
+	 * @param string $query     Business category or name to search
+	 * @param int    $sort_type Sort type (0: Relevance, 1: Distance, 2: Rating)
+	 * @param int    $page      Results page number
+	 *
+	 * @return self
+	 */
+	public function business_search( string $query, int $sort_type = 0, int $page = 1 ): self {
+		$this->search_query = $query;
+		$this->search_type  = 'ss';
+		$this->sort_type    = min( max( 0, $sort_type ), 2 );
+		$this->page         = max( 1, $page );
 
 		return $this;
 	}
@@ -111,7 +206,7 @@ class Bing extends Provider {
 	/**
 	 * Set the starting point for directions
 	 *
-	 * @param string $address Starting address or location
+	 * @param string $address Starting location
 	 *
 	 * @return self
 	 */
@@ -124,7 +219,7 @@ class Bing extends Provider {
 	/**
 	 * Set the destination point for directions
 	 *
-	 * @param string $address Destination address or location
+	 * @param string $address Destination location
 	 *
 	 * @return self
 	 */
@@ -135,21 +230,14 @@ class Bing extends Provider {
 	}
 
 	/**
-	 * Set the map style
+	 * Set the map style/view type
 	 *
 	 * @param string $style Map style ('road', 'aerial', 'aerial-labels', 'birds-eye', 'birds-eye-labels')
 	 *
 	 * @return self
 	 */
 	public function style( string $style ): self {
-		$styles      = [
-			'road'             => 'r',
-			'aerial'           => 'a',
-			'aerial-labels'    => 'h',
-			'birds-eye'        => 'o',
-			'birds-eye-labels' => 'b'
-		];
-		$this->style = $styles[ $style ] ?? 'r';
+		$this->style = self::MAP_STYLES[ $style ] ?? self::DEFAULTS['style'];
 
 		return $this;
 	}
@@ -157,8 +245,8 @@ class Bing extends Provider {
 	/**
 	 * Set birds eye view parameters
 	 *
-	 * @param string|null $scene_id  Scene ID for bird's eye view
-	 * @param int|null    $direction Direction in degrees (0, 90, 180, 270)
+	 * @param string|null $scene_id  Scene ID
+	 * @param int|null    $direction View direction in degrees (0, 90, 180, 270)
 	 *
 	 * @return self
 	 */
@@ -195,8 +283,9 @@ class Bing extends Provider {
 	 * @return self
 	 */
 	public function travel_mode( string $mode ): self {
-		$valid_modes       = [ 'driving' => 'D', 'walking' => 'W', 'transit' => 'T' ];
-		$this->travel_mode = array_key_exists( $mode, $valid_modes ) ? $mode : 'driving';
+		$this->travel_mode = array_key_exists( $mode, self::TRAVEL_MODES )
+			? $mode
+			: self::DEFAULTS['travel_mode'];
 
 		return $this;
 	}
@@ -205,7 +294,7 @@ class Bing extends Provider {
 	 * Set route options for directions
 	 *
 	 * @param bool $shortest_distance Use shortest distance instead of quickest time
-	 * @param bool $show_traffic      Show traffic on route
+	 * @param bool $show_traffic      Show traffic conditions on route
 	 *
 	 * @return self
 	 */
@@ -219,13 +308,60 @@ class Bing extends Provider {
 	}
 
 	/**
+	 * Set transit timing options
+	 *
+	 * @param string      $limit_type Time limit type ('depart', 'arrive', 'last_train')
+	 * @param string|null $time       Time in YYYYMMDDhhmm format
+	 *
+	 * @return self
+	 */
+	public function transit_time( string $limit_type, ?string $time = null ): self {
+		if ( isset( self::TIME_LIMITS[ $limit_type ] ) ) {
+			$this->limit_type = self::TIME_LIMITS[ $limit_type ];
+			$this->route_time = $time;
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Add a point to the collections
+	 *
+	 * @param float       $lat   Latitude
+	 * @param float       $lng   Longitude
+	 * @param string      $title Optional title
+	 * @param string      $notes Optional notes
+	 * @param string|null $url   Optional reference URL
+	 * @param string|null $photo Optional photo URL
+	 *
+	 * @return self
+	 */
+	public function add_point(
+		float $lat,
+		float $lng,
+		string $title = '',
+		string $notes = '',
+		?string $url = null,
+		?string $photo = null
+	): self {
+		$this->collection_points[] = compact( 'lat', 'lng', 'title', 'notes', 'url', 'photo' );
+
+		return $this;
+	}
+
+	/**
 	 * Generate the Bing Maps URL
 	 *
-	 * @return string|null The generated URL or null if required parameters are missing
+	 * Creates the appropriate URL based on set parameters.
+	 * Prioritizes different modes in this order:
+	 * 1. Directions
+	 * 2. Search
+	 * 3. Collections
+	 * 4. Basic map view
+	 *
+	 * @return string|null The generated URL or null if invalid
 	 */
 	public function get_url(): ?string {
-		$params = [];
-
 		// Check if we're generating a directions URL
 		if ( isset( $this->origin, $this->destination ) ) {
 			return $this->get_directions_url();
@@ -234,6 +370,11 @@ class Bing extends Provider {
 		// Check if we're generating a search URL
 		if ( isset( $this->search_query ) ) {
 			return $this->get_search_url();
+		}
+
+		// Check if we have collection points
+		if ( ! empty( $this->collection_points ) ) {
+			return $this->get_collections_url();
 		}
 
 		// Fall back to coordinates URL if available
@@ -277,10 +418,23 @@ class Bing extends Provider {
 	 * @return string The generated search URL
 	 */
 	private function get_search_url(): string {
-		$params = [
-			'where1' => $this->search_query,
-			'style'  => $this->style
-		];
+		$params = [];
+
+		if ( $this->search_type === 'ss' ) {
+			$params['ss'] = $this->search_query;
+			if ( $this->sort_type !== 0 ) {
+				$params['ss'] .= "~sst.{$this->sort_type}";
+			}
+			if ( $this->page > 1 ) {
+				$params['ss'] .= "~pg.{$this->page}";
+			}
+		} else {
+			$params['where1'] = $this->search_query;
+		}
+
+		if ( $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = $this->style;
+		}
 
 		if ( $this->show_traffic ) {
 			$params['trfc'] = 1;
@@ -295,19 +449,13 @@ class Bing extends Provider {
 	 * @return string The generated directions URL
 	 */
 	private function get_directions_url(): string {
-		$modes = [
-			'driving' => 'D',
-			'walking' => 'W',
-			'transit' => 'T'
-		];
-
 		// Build origin and destination strings
 		$origin      = "adr.{$this->origin}";
 		$destination = "adr.{$this->destination}";
 
 		$params = [
 			'rtp'  => "{$origin}~{$destination}",
-			'mode' => $modes[ $this->travel_mode ] ?? 'D',
+			'mode' => self::TRAVEL_MODES[ $this->travel_mode ] ?? 'D',
 			'rtop' => implode( '~', [
 				$this->route_options['route_type'],
 				$this->route_options['show_traffic'],
@@ -315,11 +463,116 @@ class Bing extends Provider {
 			] )
 		];
 
-		if ( $this->style !== 'r' ) {
+		if ( $this->limit_type && $this->route_time ) {
+			$params['limit'] = $this->limit_type;
+			$params['time']  = $this->route_time;
+		}
+
+		if ( $this->style !== self::DEFAULTS['style'] ) {
 			$params['style'] = $this->style;
 		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
+	}
+
+	/**
+	 * Generate a collections URL
+	 *
+	 * @return string The generated collections URL
+	 */
+	private function get_collections_url(): string {
+		$points = [];
+		foreach ( $this->collection_points as $point ) {
+			$point_str = "point.{$point['lat']}_{$point['lng']}";
+			if ( $point['title'] ) {
+				$point_str .= "_{$point['title']}";
+			}
+			if ( $point['notes'] ) {
+				$point_str .= "_{$point['notes']}";
+			}
+			if ( $point['url'] ) {
+				$point_str .= "_{$point['url']}";
+			}
+			if ( $point['photo'] ) {
+				$point_str .= "_{$point['photo']}";
+			}
+			$points[] = $point_str;
+		}
+
+		$params = [ 'sp' => implode( '~', $points ) ];
+
+		if ( $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = $this->style;
+		}
+
+		return self::BASE_URL . '?' . http_build_query( $params );
+	}
+
+	/**
+	 * Reset all properties to their default values
+	 *
+	 * @return self
+	 */
+	public function reset(): self {
+		$this->search_query = null;
+		$this->search_type  = null;
+		$this->sort_type    = 0;
+		$this->page         = 1;
+
+		$this->origin      = null;
+		$this->destination = null;
+		$this->travel_mode = self::DEFAULTS['travel_mode'];
+
+		$this->style        = self::DEFAULTS['style'];
+		$this->show_traffic = false;
+		$this->direction    = null;
+		$this->scene        = null;
+
+		$this->route_options = [
+			'route_type'   => 0,
+			'show_traffic' => 0
+		];
+
+		$this->limit_type = null;
+		$this->route_time = null;
+
+		$this->collection_points = [];
+
+		// Reset parent class properties
+		$this->latitude  = null;
+		$this->longitude = null;
+		$this->zoom      = self::DEFAULTS['zoom'];
+
+		return $this;
+	}
+
+	/**
+	 * Validate required parameters based on current state
+	 *
+	 * @return bool True if the current state is valid
+	 */
+	protected function validate(): bool {
+		// For coordinate-based URLs
+		if ( $this->latitude !== null && $this->longitude !== null ) {
+			return true;
+		}
+
+		// For search-based URLs
+		if ( $this->search_query !== null ) {
+			return true;
+		}
+
+		// For directions URLs
+		if ( $this->origin !== null && $this->destination !== null ) {
+			return true;
+		}
+
+		// For collections URLs
+		if ( ! empty( $this->collection_points ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 }
