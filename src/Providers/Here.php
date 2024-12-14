@@ -20,7 +20,7 @@ use ArrayPress\MapKit\Abstracts\Provider;
  * Provides methods for building HERE Maps URLs with various parameters
  * including location, routing, and map display options.
  */
-class HereMaps extends Provider {
+class Here extends Provider {
 
 	/**
 	 * Base URL for HERE Maps

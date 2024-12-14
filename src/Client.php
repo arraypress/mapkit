@@ -14,7 +14,7 @@ namespace ArrayPress\MapKit;
 use ArrayPress\MapKit\Providers\Apple;
 use ArrayPress\MapKit\Providers\Bing;
 use ArrayPress\MapKit\Providers\Google;
-use ArrayPress\MapKit\Providers\HereMaps;
+use ArrayPress\MapKit\Providers\Here;
 use ArrayPress\MapKit\Providers\OpenStreetMap;
 use ArrayPress\MapKit\Providers\Waze;
 use ArrayPress\MapKit\Providers\Yandex;
@@ -58,10 +58,10 @@ class Client {
 	/**
 	 * Create a new HERE Maps URL builder
 	 *
-	 * @return HereMaps HERE Maps URL builder instance
+	 * @return Here HERE Maps URL builder instance
 	 */
-	public function heremaps(): HereMaps {
-		return new HereMaps();
+	public function here(): Here {
+		return new Here();
 	}
 
 	/**
@@ -122,7 +122,7 @@ class Client {
 		                       ->get_url();
 
 		// HERE Maps
-		$urls['heremaps'] = $this->heremaps()
+		$urls['here'] = $this->here()
 		                     ->coordinates( $latitude, $longitude )
 		                     ->get_url();
 
