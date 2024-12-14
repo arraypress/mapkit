@@ -50,18 +50,16 @@ class Bing extends Provider {
 	 * Valid map styles with their URL parameters
 	 *
 	 * Available visualization types for the map:
-	 * - r: Road view (default)
-	 * - a: Aerial view
-	 * - h: Aerial view with labels
-	 * - o: Birds eye view
-	 * - b: Birds eye view with labels
+	 * - Default: no style parameter needed (road)
+	 * - h: Aerial/Satellite with labels
+	 * - s: Ordnance Survey
+	 * - g: Bird's eye
 	 */
 	private const MAP_STYLES = [
-		'road'             => 'r',
-		'aerial'           => 'a',
-		'aerial-labels'    => 'h',
-		'birds-eye'        => 'o',
-		'birds-eye-labels' => 'b'
+		'road'            => '',      // Default - no parameter needed
+		'satellite'       => 'h',     // Aerial with labels
+		'ordnance-survey' => 's',     // Ordnance survey view
+		'birds-eye'       => 'g'      // Bird's eye view
 	];
 
 	/**
@@ -390,12 +388,21 @@ class Bing extends Provider {
 	 *
 	 * @return string The generated coordinates URL
 	 */
+	/**
+	 * Generate a coordinates-based URL
+	 *
+	 * @return string The generated coordinates URL
+	 */
 	private function get_coordinates_url(): string {
 		$params = [
-			'cp'    => "{$this->latitude}~{$this->longitude}",
-			'lvl'   => $this->zoom,
-			'style' => $this->style
+			'cp'  => "{$this->latitude}~{$this->longitude}",
+			'lvl' => $this->zoom
 		];
+
+		// Only add style parameter if it's not the default road view
+		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = self::MAP_STYLES[ $this->style ];
+		}
 
 		if ( $this->scene ) {
 			$params['scene'] = $this->scene;
@@ -432,8 +439,8 @@ class Bing extends Provider {
 			$params['where1'] = $this->search_query;
 		}
 
-		if ( $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = $this->style;
+		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = self::MAP_STYLES[ $this->style ];
 		}
 
 		if ( $this->show_traffic ) {
@@ -468,8 +475,8 @@ class Bing extends Provider {
 			$params['time']  = $this->route_time;
 		}
 
-		if ( $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = $this->style;
+		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = self::MAP_STYLES[ $this->style ];
 		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
@@ -501,8 +508,8 @@ class Bing extends Provider {
 
 		$params = [ 'sp' => implode( '~', $points ) ];
 
-		if ( $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = $this->style;
+		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
+			$params['style'] = self::MAP_STYLES[ $this->style ];
 		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
