@@ -572,7 +572,10 @@ class Bing extends Provider {
 			return null;
 		}
 
-		$params = [];
+		$params = [
+			'w' => $this->embed_width,   // Add width parameter
+			'h' => $this->embed_height,  // Add height parameter
+		];
 
 		// For location view
 		if ( $this->latitude !== null && $this->longitude !== null ) {
