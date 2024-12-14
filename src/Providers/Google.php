@@ -93,9 +93,8 @@ class Google extends Provider {
 	 * Each type provides a different view of the map data.
 	 */
 	private const MAP_TYPES = [
-		'roadmap',
-		'satellite',
-		'terrain'  // hybrid removed as it's not in docs
+		'roadmap',    // Default
+		'satellite'
 	];
 
 	/**
@@ -112,7 +111,8 @@ class Google extends Provider {
 		'none',
 		'transit',
 		'traffic',
-		'bicycling'
+		'bicycling',
+		'terrain'
 	];
 
 	/**
