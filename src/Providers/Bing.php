@@ -170,6 +170,21 @@ class Bing extends Provider {
 	protected array $collection_points = [];
 
 	/**
+	 * Embed mode flag
+	 */
+	protected bool $is_embed = false;
+
+	/**
+	 * Embed width in pixels
+	 */
+	protected int $embed_width = 600;
+
+	/**
+	 * Embed height in pixels
+	 */
+	protected int $embed_height = 450;
+
+	/**
 	 * Set a basic location search
 	 *
 	 * @param string $query Location to search for (address or place name)
@@ -352,6 +367,22 @@ class Bing extends Provider {
 	}
 
 	/**
+	 * Configure for embed usage
+	 *
+	 * @param int $width  Width in pixels (default: 600)
+	 * @param int $height Height in pixels (default: 450)
+	 *
+	 * @return self
+	 */
+	public function as_embed( int $width = 600, int $height = 450 ): self {
+		$this->is_embed     = true;
+		$this->embed_width  = max( 0, $width );
+		$this->embed_height = max( 0, $height );
+
+		return $this;
+	}
+
+	/**
 	 * Generate the Bing Maps URL
 	 *
 	 * Creates the appropriate URL based on set parameters.
@@ -529,6 +560,63 @@ class Bing extends Provider {
 	}
 
 	/**
+	 * Get embed HTML code
+	 *
+	 * Generates an iframe embed code for the map.
+	 * Only works if as_embed() has been called.
+	 *
+	 * @return string|null HTML iframe code or null if invalid
+	 */
+	public function get_embed(): ?string {
+		if ( ! $this->is_embed ) {
+			return null;
+		}
+
+		$params = [];
+
+		// For location view
+		if ( $this->latitude !== null && $this->longitude !== null ) {
+			$params['cp']  = "{$this->latitude}~{$this->longitude}";
+			$params['lvl'] = $this->zoom;
+		}
+
+		// For search
+		if ( $this->search_query ) {
+			$params['where1'] = $this->search_query;
+		}
+
+		// Style
+		if ( $this->style !== 'road' ) {
+			$style_value = self::MAP_STYLES[ $this->style ];
+			if ( ! empty( $style_value ) ) {
+				$params['style'] = $style_value;
+			}
+		}
+
+		// Traffic
+		if ( $this->show_traffic ) {
+			$params['trfc'] = 1;
+		}
+
+		// Birds eye parameters
+		if ( $this->scene ) {
+			$params['scene'] = $this->scene;
+		}
+		if ( $this->direction !== null ) {
+			$params['dir'] = $this->direction;
+		}
+
+		$url = 'https://www.bing.com/maps/embed?' . http_build_query( $params );
+
+		return sprintf(
+			'<iframe width="%d" height="%d" frameborder="0" style="border:0" src="%s" allowfullscreen></iframe>',
+			$this->embed_width,
+			$this->embed_height,
+			esc_url( $url )
+		);
+	}
+
+	/**
 	 * Reset all properties to their default values
 	 *
 	 * @return self
@@ -562,6 +650,10 @@ class Bing extends Provider {
 		$this->latitude  = null;
 		$this->longitude = null;
 		$this->zoom      = self::DEFAULTS['zoom'];
+
+		$this->is_embed     = false;
+		$this->embed_width  = 600;
+		$this->embed_height = 450;
 
 		return $this;
 	}
