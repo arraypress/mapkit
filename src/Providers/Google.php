@@ -102,17 +102,19 @@ class Google extends Provider {
 	 *
 	 * Defines extra layers to display on the map.
 	 * Each layer adds specific information overlay.
+	 * Note: Terrain layer uses a special URL format
 	 * - none: No additional layer (default)
 	 * - transit: Public transportation routes
 	 * - traffic: Real-time traffic conditions
 	 * - bicycling: Bike paths and preferred roads
+	 * - terrain: Topographical view (uses special URL format)
 	 */
 	private const LAYER_TYPES = [
 		'none',
 		'transit',
 		'traffic',
 		'bicycling',
-		'terrain'
+		'terrain'  // Special case - uses different URL structure
 	];
 
 	/**
@@ -847,10 +849,22 @@ class Google extends Provider {
 	 * Generate a basic map URL
 	 *
 	 * Format: https://www.google.com/maps/@?api=1&map_action=map&parameters
+	 * Special case for terrain layer which uses different URL structure
 	 *
 	 * @return string The generated map URL
 	 */
 	private function get_map_url(): string {
+		// Special case for terrain layer
+		if ( $this->layer === 'terrain' && $this->latitude !== null && $this->longitude !== null ) {
+			return sprintf(
+				'https://www.google.com/maps/@%f,%f,%dz/data=!5m1!1e4',
+				$this->latitude,
+				$this->longitude,
+				$this->zoom
+			);
+		}
+
+		// Standard URL generation for other cases
 		$params = [
 			'api'        => self::API_VERSION,
 			'map_action' => 'map'
@@ -865,10 +879,10 @@ class Google extends Provider {
 		}
 
 		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
-			$params['basemap'] = $this->basemap;
+			$params['t'] = self::MAP_TYPES[ $this->basemap ];
 		}
 
-		if ( $this->layer !== self::DEFAULTS['layer'] ) {
+		if ( $this->layer !== self::DEFAULTS['layer'] && $this->layer !== 'terrain' ) {
 			$params['layer'] = $this->layer;
 		}
 
@@ -876,7 +890,6 @@ class Google extends Provider {
 
 		return self::BASE_URL . '/@?' . http_build_query( $params );
 	}
-
 
 	/**
 	 * Generate a Street View panorama URL
