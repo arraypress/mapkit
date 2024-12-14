@@ -348,6 +348,18 @@ class Google extends Provider {
 	protected bool $is_embed = false;
 
 	/**
+	 * Street View mode flag
+	 *
+	 * Indicates whether the URL should be generated for Street View.
+	 * When true and coordinates are set, generates a Street View URL.
+	 * When true but only pano ID is set, uses the panorama ID.
+	 * When false, generates regular map URLs.
+	 *
+	 * @var bool
+	 */
+	protected bool $is_street_view_mode = false;
+
+	/**
 	 * Embed width
 	 *
 	 * Width of the embedded map in pixels.
@@ -630,10 +642,7 @@ class Google extends Provider {
 	 *
 	 * @return self
 	 */
-	public function as_embed(
-		int $width = self::DEFAULTS['embed_width'],
-		int $height = self::DEFAULTS['embed_height']
-	): self {
+	public function as_embed( int $width = self::DEFAULTS['embed_width'], int $height = self::DEFAULTS['embed_height'] ): self {
 		$this->is_embed     = true;
 		$this->embed_width  = max( 0, $width );
 		$this->embed_height = max( 0, $height );
@@ -655,11 +664,9 @@ class Google extends Provider {
 	 *
 	 * @return self
 	 */
-	public function street_view(
-		?string $pano_id = null, ?int $heading = null,
-		?int $pitch = null, ?int $fov = null
-	): self {
-		$this->pano = $pano_id;
+	public function street_view( ?string $pano_id = null, ?int $heading = null, ?int $pitch = null, ?int $fov = null ): self {
+		$this->is_street_view_mode = true;  // Set the flag
+		$this->pano                = $pano_id;
 
 		if ( $heading !== null ) {
 			$this->heading = max( self::STREET_VIEW_LIMITS['heading_min'],
@@ -733,8 +740,8 @@ class Google extends Provider {
 	 * @return string|null The generated URL or null if invalid
 	 */
 	public function get_url(): ?string {
-		// Street View panorama
-		if ( $this->pano !== null ) {
+		// Street View panorama (check if we have either pano ID or coordinates)
+		if ( $this->pano !== null || ( $this->latitude !== null && $this->longitude !== null && $this->is_street_view_mode ) ) {
 			return $this->get_street_view_url();
 		}
 
@@ -884,10 +891,11 @@ class Google extends Provider {
 			'map_action' => 'pano'
 		];
 
-		// One of pano or viewpoint is required
+		// If we have a pano ID, use that
 		if ( $this->pano ) {
 			$params['pano'] = $this->pano;
-		} else {
+		} // Otherwise use coordinates as viewpoint
+		else if ( $this->latitude !== null && $this->longitude !== null ) {
 			$params['viewpoint'] = $this->latitude . ',' . $this->longitude;
 		}
 
