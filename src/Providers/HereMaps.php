@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class HereMaps
  *
@@ -18,7 +20,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides methods for building HERE Maps URLs with various parameters
  * including location, routing, and map display options.
  */
-class HereMaps extends Base {
+class HereMaps extends Provider {
 
 	/**
 	 * Base URL for HERE Maps

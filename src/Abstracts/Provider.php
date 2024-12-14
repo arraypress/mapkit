@@ -9,7 +9,7 @@
 
 declare( strict_types=1 );
 
-namespace ArrayPress\MapKit\Providers;
+namespace ArrayPress\MapKit\Abstracts;
 
 /**
  * Abstract Class MapService
@@ -18,7 +18,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides common functionality for coordinate handling,
  * zoom levels, and map types.
  */
-abstract class Base {
+abstract class Provider {
 
 	/**
 	 * Latitude coordinate

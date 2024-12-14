@@ -20,7 +20,9 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
-class Apple extends Base {
+use ArrayPress\MapKit\Abstracts\Provider;
+
+class Apple extends Provider {
 
 	/**
 	 * Base URL for Apple Maps

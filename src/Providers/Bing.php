@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class Bing
  *
@@ -18,7 +20,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides methods for building Bing Maps URLs with various parameters
  * including search queries, directions, and map styles.
  */
-class Bing extends Base {
+class Bing extends Provider {
 
 	/**
 	 * Base URL for Bing Maps

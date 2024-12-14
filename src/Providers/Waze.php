@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class Waze
  *
@@ -18,7 +20,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides methods for building Waze URLs with various parameters
  * including navigation, locations, and live routing options.
  */
-class Waze extends Base {
+class Waze extends Provider {
 
 	/**
 	 * Base URL for Waze web

@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class YandexMaps
  *
@@ -18,7 +20,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides methods for building Yandex Maps URLs with various parameters
  * including routes, markers, and map display options.
  */
-class Yandex extends Base {
+class Yandex extends Provider {
 
 	/**
 	 * Base URL for Yandex Maps

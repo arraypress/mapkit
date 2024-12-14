@@ -21,12 +21,14 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class Google
  *
  * Google Maps URL and embed builder implementation.
  */
-class Google extends Base {
+class Google extends Provider {
 
 	/**
 	 * API version parameter for Google Maps URLs

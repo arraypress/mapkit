@@ -14,6 +14,7 @@ namespace ArrayPress\MapKit;
 use ArrayPress\MapKit\Providers\Apple;
 use ArrayPress\MapKit\Providers\Bing;
 use ArrayPress\MapKit\Providers\Google;
+use ArrayPress\MapKit\Providers\HereMaps;
 use ArrayPress\MapKit\Providers\OpenStreetMap;
 use ArrayPress\MapKit\Providers\Waze;
 use ArrayPress\MapKit\Providers\Yandex;
@@ -25,16 +26,7 @@ use ArrayPress\MapKit\Providers\Yandex;
  * Provides a fluent interface for building URLs with coordinates,
  * markers, zoom levels, and other map-specific parameters.
  */
-class MapKit {
-
-	/**
-	 * Create a new Google Maps URL builder
-	 *
-	 * @return Google Google Maps URL builder instance
-	 */
-	public function google(): Google {
-		return new Google();
-	}
+class Client {
 
 	/**
 	 * Create a new Apple Maps URL builder
@@ -52,6 +44,24 @@ class MapKit {
 	 */
 	public function bing(): Bing {
 		return new Bing();
+	}
+
+	/**
+	 * Create a new Google Maps URL builder
+	 *
+	 * @return Google Google Maps URL builder instance
+	 */
+	public function google(): Google {
+		return new Google();
+	}
+
+	/**
+	 * Create a new HERE Maps URL builder
+	 *
+	 * @return HereMaps HERE Maps URL builder instance
+	 */
+	public function heremaps(): HereMaps {
+		return new HereMaps();
 	}
 
 	/**
@@ -93,12 +103,6 @@ class MapKit {
 	public function get_all_urls( float $latitude, float $longitude, int $zoom = 12 ): array {
 		$urls = [];
 
-		// Google Maps
-		$urls['google'] = $this->google()
-		                       ->coordinates( $latitude, $longitude )
-		                       ->zoom( $zoom )
-		                       ->get_url();
-
 		// Apple Maps
 		$urls['apple'] = $this->apple()
 		                      ->coordinates( $latitude, $longitude )
@@ -109,6 +113,17 @@ class MapKit {
 		$urls['bing'] = $this->bing()
 		                     ->coordinates( $latitude, $longitude )
 		                     ->zoom( $zoom )
+		                     ->get_url();
+
+		// Google Maps
+		$urls['google'] = $this->google()
+		                       ->coordinates( $latitude, $longitude )
+		                       ->zoom( $zoom )
+		                       ->get_url();
+
+		// HERE Maps
+		$urls['heremaps'] = $this->heremaps()
+		                     ->coordinates( $latitude, $longitude )
 		                     ->get_url();
 
 		// OpenStreetMap

@@ -11,6 +11,8 @@ declare( strict_types=1 );
 
 namespace ArrayPress\MapKit\Providers;
 
+use ArrayPress\MapKit\Abstracts\Provider;
+
 /**
  * Class OpenStreetMap
  *
@@ -18,7 +20,7 @@ namespace ArrayPress\MapKit\Providers;
  * Provides methods for building OpenStreetMap URLs with various parameters
  * including markers, layers, and map display options.
  */
-class OpenStreetMap extends Base {
+class OpenStreetMap extends Provider {
 
 	/**
 	 * Base URL for OpenStreetMap
@@ -49,6 +51,23 @@ class OpenStreetMap extends Base {
 	private ?string $notes = null;
 
 	/**
+	 * Valid map layers
+	 *
+	 * Defines extra layers to display on the map.
+	 * Each layer adds specific information overlay.
+	 * - none: No additional layer (default)
+	 * - transit: Public transportation routes
+	 * - traffic: Real-time traffic conditions
+	 * - bicycling: Bike paths and preferred roads
+	 */
+	private const LAYER_TYPES = [
+		'standard',
+		'cycle',
+		'transport',
+		'humanitarian'
+	];
+
+	/**
 	 * Set the map layer
 	 *
 	 * @param string $layer Map layer ('standard', 'cycle', 'transport', 'humanitarian')
@@ -56,8 +75,9 @@ class OpenStreetMap extends Base {
 	 * @return self
 	 */
 	public function layer( string $layer ): self {
-		$valid_layers = [ 'standard', 'cycle', 'transport', 'humanitarian' ];
-		$this->layer  = in_array( $layer, $valid_layers ) ? $layer : 'standard';
+		$this->layer  = in_array( $layer, self::LAYER_TYPES )
+			? $layer
+			: 'standard';
 
 		return $this;
 	}
