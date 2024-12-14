@@ -59,34 +59,6 @@ class Google extends Base {
 	];
 
 	/**
-	 * Data parameters for different map types
-	 *
-	 * These parameters control the map visualization:
-	 * - satellite: Satellite imagery view
-	 * - hybrid: Satellite imagery with road overlay
-	 * - terrain: Topographical view
-	 */
-	private const MAP_DATA = [
-		'satellite' => '!3m1!1e3',
-		'hybrid'    => '!3m1!1e4',
-		'terrain'   => '!3m1!1e4'
-	];
-
-	/**
-	 * Data parameters for map layers
-	 *
-	 * These parameters add additional information layers:
-	 * - traffic: Real-time traffic conditions
-	 * - transit: Public transit routes and stops
-	 * - bicycling: Bike paths and trails
-	 */
-	private const LAYER_DATA = [
-		'traffic'   => '!5m1!1e1',
-		'transit'   => '!5m1!1e2',
-		'bicycling' => '!5m1!1e3'
-	];
-
-	/**
 	 * Valid travel modes for directions
 	 *
 	 * Available transportation modes when calculating routes.
@@ -96,6 +68,7 @@ class Google extends Base {
 		'driving',
 		'walking',
 		'bicycling',
+		'two-wheeler', // Added from docs
 		'transit'
 	];
 
@@ -120,8 +93,24 @@ class Google extends Base {
 	private const MAP_TYPES = [
 		'roadmap',
 		'satellite',
-		'hybrid',
-		'terrain'
+		'terrain'  // hybrid removed as it's not in docs
+	];
+
+	/**
+	 * Valid map layers
+	 *
+	 * Defines extra layers to display on the map.
+	 * Each layer adds specific information overlay.
+	 * - none: No additional layer (default)
+	 * - transit: Public transportation routes
+	 * - traffic: Real-time traffic conditions
+	 * - bicycling: Bike paths and preferred roads
+	 */
+	private const LAYER_TYPES = [
+		'none',
+		'transit',
+		'traffic',
+		'bicycling'
 	];
 
 	/**
@@ -586,7 +575,7 @@ class Google extends Base {
 	 * @return self
 	 */
 	public function layer( string $type ): self {
-		$this->layer = array_key_exists( $type, self::LAYER_DATA )
+		$this->layer = in_array( $type, self::LAYER_TYPES, true )
 			? $type
 			: self::DEFAULTS['layer'];
 
@@ -773,6 +762,13 @@ class Google extends Base {
 	 *
 	 * @return string The generated search URL
 	 */
+	/**
+	 * Generate a search URL
+	 *
+	 * Format: https://www.google.com/maps/search/?api=1&parameters
+	 *
+	 * @return string The generated search URL
+	 */
 	private function get_search_url(): string {
 		$params = [
 			'api'   => self::API_VERSION,
@@ -785,24 +781,20 @@ class Google extends Base {
 
 		$this->add_common_params( $params );
 
-		return self::BASE_URL . '/search?' . http_build_query( $params );
+		return self::BASE_URL . '/search/?' . http_build_query( $params );
 	}
 
 	/**
 	 * Generate a directions URL
 	 *
-	 * Creates a URL for getting directions between locations.
-	 * Includes origin, destination, waypoints, and route preferences.
+	 * Format: https://www.google.com/maps/dir/?api=1&parameters
 	 *
 	 * @return string The generated directions URL
 	 */
-	/**
-	 * Get the URL for a directions request
-	 */
 	private function get_directions_url(): string {
-		$base   = self::BASE_URL . '/dir';
 		$params = [ 'api' => self::API_VERSION ];
 
+		// Required parameters
 		if ( $this->origin ) {
 			$params['origin'] = $this->origin;
 			if ( $this->origin_place_id ) {
@@ -817,8 +809,9 @@ class Google extends Base {
 			}
 		}
 
+		// Optional parameters
 		if ( $this->travel_mode !== self::DEFAULTS['travel_mode'] ) {
-			$params['mode'] = strtolower( $this->travel_mode );
+			$params['travelmode'] = $this->travel_mode;
 		}
 
 		if ( ! empty( $this->waypoints ) ) {
@@ -829,71 +822,88 @@ class Google extends Base {
 		}
 
 		if ( ! empty( $this->avoid ) ) {
-			$params['avoid'] = implode( '|', $this->avoid );
+			$params['avoid'] = implode( ',', $this->avoid );
 		}
 
 		if ( $this->navigate ) {
 			$params['dir_action'] = 'navigate';
 		}
 
-		return $base . '?' . http_build_query( $params );
+		$this->add_common_params( $params );
+
+		return self::BASE_URL . '/dir/?' . http_build_query( $params );
 	}
 
 	/**
 	 * Generate a basic map URL
 	 *
-	 * Creates a URL for viewing a specific location on the map.
-	 * Includes coordinates, zoom level, and display options.
+	 * Format: https://www.google.com/maps/@?api=1&map_action=map&parameters
 	 *
 	 * @return string The generated map URL
 	 */
 	private function get_map_url(): string {
-		$base = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
+		$params = [
+			'api'        => self::API_VERSION,
+			'map_action' => 'map'
+		];
 
-		$params = [];
+		if ( $this->latitude !== null && $this->longitude !== null ) {
+			$params['center'] = $this->latitude . ',' . $this->longitude;
+		}
+
+		if ( $this->zoom !== self::DEFAULTS['zoom'] ) {
+			$params['zoom'] = $this->zoom;
+		}
+
+		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
+			$params['basemap'] = $this->basemap;
+		}
+
 		if ( $this->layer !== self::DEFAULTS['layer'] ) {
 			$params['layer'] = $this->layer;
 		}
 
-		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
-			$params['t'] = $this->basemap;
-		}
-
 		$this->add_common_params( $params );
 
-		return empty( $params ) ? $base : $base . '?' . http_build_query( $params );
+		return self::BASE_URL . '/@?' . http_build_query( $params );
 	}
+
 
 	/**
 	 * Generate a Street View panorama URL
 	 *
-	 * Creates a URL for viewing Street View at a specific location.
-	 * Includes camera angle and perspective settings.
+	 * Format: https://www.google.com/maps/@?api=1&map_action=pano&parameters
 	 *
 	 * @return string The generated Street View URL
 	 */
 	private function get_street_view_url(): string {
-		$params = [ 'api' => self::API_VERSION ];
+		$params = [
+			'api'        => self::API_VERSION,
+			'map_action' => 'pano'
+		];
 
+		// One of pano or viewpoint is required
 		if ( $this->pano ) {
 			$params['pano'] = $this->pano;
 		} else {
-			$params['location'] = $this->latitude . ',' . $this->longitude;
+			$params['viewpoint'] = $this->latitude . ',' . $this->longitude;
 		}
 
 		if ( $this->heading !== null ) {
 			$params['heading'] = $this->heading;
 		}
+
 		if ( $this->pitch !== null ) {
 			$params['pitch'] = $this->pitch;
 		}
+
 		if ( $this->fov !== null ) {
 			$params['fov'] = $this->fov;
 		}
 
 		$this->add_common_params( $params );
 
-		return self::BASE_URL . '/streetview?' . http_build_query( $params );
+		return self::BASE_URL . '/@?' . http_build_query( $params );
 	}
 
 	/**
