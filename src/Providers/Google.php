@@ -702,10 +702,24 @@ class Google extends Base {
 			return null;
 		}
 
-		$url = $this->get_url();
-		if ( ! $url ) {
-			return null;
+		$params = [];
+
+		if ( $this->query ) {
+			$params['q'] = $this->query;
+		} else if ( $this->latitude !== null && $this->longitude !== null ) {
+			$params['q'] = $this->latitude . ',' . $this->longitude;
 		}
+
+		if ( $this->zoom !== self::DEFAULTS['zoom'] ) {
+			$params['z'] = $this->zoom;
+		}
+
+		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
+			$params['t'] = $this->basemap;
+		}
+
+		// Note: For embeds to work, an API key would be needed
+		$url = self::BASE_URL . '/embed?' . http_build_query( $params );
 
 		return sprintf(
 			'<iframe width="%d" height="%d" style="border:0" loading="lazy" allowfullscreen src="%s"></iframe>',
@@ -771,7 +785,7 @@ class Google extends Base {
 
 		$this->add_common_params( $params );
 
-		return self::BASE_URL . '/search/?' . http_build_query( $params );
+		return self::BASE_URL . '/search?' . http_build_query( $params );
 	}
 
 	/**
@@ -782,10 +796,12 @@ class Google extends Base {
 	 *
 	 * @return string The generated directions URL
 	 */
+	/**
+	 * Get the URL for a directions request
+	 */
 	private function get_directions_url(): string {
-		$params = [
-			'api' => self::API_VERSION
-		];
+		$base   = self::BASE_URL . '/dir';
+		$params = [ 'api' => self::API_VERSION ];
 
 		if ( $this->origin ) {
 			$params['origin'] = $this->origin;
@@ -802,7 +818,7 @@ class Google extends Base {
 		}
 
 		if ( $this->travel_mode !== self::DEFAULTS['travel_mode'] ) {
-			$params['travelmode'] = strtoupper( $this->travel_mode );
+			$params['mode'] = strtolower( $this->travel_mode );
 		}
 
 		if ( ! empty( $this->waypoints ) ) {
@@ -813,21 +829,14 @@ class Google extends Base {
 		}
 
 		if ( ! empty( $this->avoid ) ) {
-			$params['avoid'] = implode( ',', $this->avoid );
+			$params['avoid'] = implode( '|', $this->avoid );
 		}
 
 		if ( $this->navigate ) {
 			$params['dir_action'] = 'navigate';
 		}
 
-		$base_url = self::BASE_URL . '/dir';
-
-		// Add coordinates if available
-		if ( $this->latitude !== null && $this->longitude !== null ) {
-			$base_url .= '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
-		}
-
-		return $base_url . ( empty( $params ) ? '/' : '/?' . http_build_query( $params ) );
+		return $base . '?' . http_build_query( $params );
 	}
 
 	/**
@@ -839,24 +848,20 @@ class Google extends Base {
 	 * @return string The generated map URL
 	 */
 	private function get_map_url(): string {
-		$base_url = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ','
-		            . $this->zoom . 'z';
+		$base = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude . ',' . $this->zoom . 'z';
 
-		// Add map type data parameter if not default
-		if ( $this->basemap !== self::DEFAULTS['basemap'] && isset( self::MAP_DATA[ $this->basemap ] ) ) {
-			$base_url .= '/data=' . self::MAP_DATA[ $this->basemap ];
-		}
-
-		// Add layer data parameter if set
-		if ( $this->layer !== self::DEFAULTS['layer'] && isset( self::LAYER_DATA[ $this->layer ] ) ) {
-			$base_url .= '/data=' . self::LAYER_DATA[ $this->layer ];
-		}
-
-		// Add remaining parameters
 		$params = [];
+		if ( $this->layer !== self::DEFAULTS['layer'] ) {
+			$params['layer'] = $this->layer;
+		}
+
+		if ( $this->basemap !== self::DEFAULTS['basemap'] ) {
+			$params['t'] = $this->basemap;
+		}
+
 		$this->add_common_params( $params );
 
-		return empty( $params ) ? $base_url : $base_url . '?' . http_build_query( $params );
+		return empty( $params ) ? $base : $base . '?' . http_build_query( $params );
 	}
 
 	/**
@@ -868,39 +873,27 @@ class Google extends Base {
 	 * @return string The generated Street View URL
 	 */
 	private function get_street_view_url(): string {
-		// Set default values for required parameters
-		$heading_val = $this->heading ?? 0;
-		$pitch_val   = $this->pitch ?? 0;
-		$fov_val     = $this->fov ?? 90;
+		$params = [ 'api' => self::API_VERSION ];
 
 		if ( $this->pano ) {
-			$base        = self::BASE_URL . '/@?api=' . self::API_VERSION . '&pano=' . $this->pano;
-			$view_params = [
-				'h'   => $heading_val,
-				'p'   => $pitch_val,
-				'fov' => $fov_val
-			];
+			$params['pano'] = $this->pano;
 		} else {
-			$base        = self::BASE_URL . '/@' . $this->latitude . ',' . $this->longitude;
-			$view_params = [
-				'a'   => '90y', // default angle
-				'y'   => $heading_val . 'h',
-				'p'   => $pitch_val . 't',
-				'fov' => $fov_val
-			];
+			$params['location'] = $this->latitude . ',' . $this->longitude;
 		}
 
-		// Add view parameters
-		$base .= ',' . implode( ',', $view_params );
+		if ( $this->heading !== null ) {
+			$params['heading'] = $this->heading;
+		}
+		if ( $this->pitch !== null ) {
+			$params['pitch'] = $this->pitch;
+		}
+		if ( $this->fov !== null ) {
+			$params['fov'] = $this->fov;
+		}
 
-		// Add data parameters for Street View
-		$base .= '/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192';
-
-		// Add remaining parameters
-		$params = [];
 		$this->add_common_params( $params );
 
-		return empty( $params ) ? $base : $base . '?' . http_build_query( $params );
+		return self::BASE_URL . '/streetview?' . http_build_query( $params );
 	}
 
 	/**
