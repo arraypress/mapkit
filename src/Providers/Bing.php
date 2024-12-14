@@ -43,7 +43,7 @@ class Bing extends Provider {
 	private const DEFAULTS = [
 		'zoom'        => 12,
 		'travel_mode' => 'driving',
-		'style'       => 'r'  // road view
+		'style'       => 'road'  // road view
 	];
 
 	/**
@@ -230,12 +230,16 @@ class Bing extends Provider {
 	/**
 	 * Set the map style/view type
 	 *
-	 * @param string $style Map style ('road', 'aerial', 'aerial-labels', 'birds-eye', 'birds-eye-labels')
+	 * @param string $style Map style ('road', 'satellite', 'ordnance-survey', 'birds-eye')
 	 *
 	 * @return self
 	 */
 	public function style( string $style ): self {
-		$this->style = self::MAP_STYLES[ $style ] ?? self::DEFAULTS['style'];
+		if ( array_key_exists( $style, self::MAP_STYLES ) ) {
+			$this->style = $style;  // Store the style key, not the value
+		} else {
+			$this->style = 'road';  // Default to road if invalid style
+		}
 
 		return $this;
 	}
@@ -400,8 +404,11 @@ class Bing extends Provider {
 		];
 
 		// Only add style parameter if it's not the default road view
-		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = self::MAP_STYLES[ $this->style ];
+		if ( $this->style !== 'road' ) {
+			$style_value = self::MAP_STYLES[ $this->style ];
+			if ( ! empty( $style_value ) ) {
+				$params['style'] = $style_value;
+			}
 		}
 
 		if ( $this->scene ) {
@@ -439,8 +446,11 @@ class Bing extends Provider {
 			$params['where1'] = $this->search_query;
 		}
 
-		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = self::MAP_STYLES[ $this->style ];
+		if ( $this->style !== 'road' ) {
+			$style_value = self::MAP_STYLES[ $this->style ];
+			if ( ! empty( $style_value ) ) {
+				$params['style'] = $style_value;
+			}
 		}
 
 		if ( $this->show_traffic ) {
@@ -475,8 +485,11 @@ class Bing extends Provider {
 			$params['time']  = $this->route_time;
 		}
 
-		if ( $this->style !== 'road' && $this->style !== self::DEFAULTS['style'] ) {
-			$params['style'] = self::MAP_STYLES[ $this->style ];
+		if ( $this->style !== 'road' ) {
+			$style_value = self::MAP_STYLES[ $this->style ];
+			if ( ! empty( $style_value ) ) {
+				$params['style'] = $style_value;
+			}
 		}
 
 		return self::BASE_URL . '?' . http_build_query( $params );
