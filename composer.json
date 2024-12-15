@@ -23,7 +23,6 @@
     "sort-packages": true
   },
   "minimum-stability": "stable",
-  "prefer-stable": true,
   "support": {
     "issues": "https://github.com/arraypress/mapkit/issues",
     "source": "https://github.com/arraypress/mapkit"
