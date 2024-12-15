@@ -14,13 +14,9 @@ namespace ArrayPress\MapKit;
 use ArrayPress\MapKit\Providers\Apple;
 use ArrayPress\MapKit\Providers\Bing;
 use ArrayPress\MapKit\Providers\Google;
-use ArrayPress\MapKit\Providers\Here;
-use ArrayPress\MapKit\Providers\OpenStreetMap;
-use ArrayPress\MapKit\Providers\Waze;
-use ArrayPress\MapKit\Providers\Yandex;
 
 /**
- * Class MapKit
+ * Class Client
  *
  * Primary class for generating URLs for various map services.
  * Provides a fluent interface for building URLs with coordinates,
@@ -56,42 +52,6 @@ class Client {
 	}
 
 	/**
-	 * Create a new HERE Maps URL builder
-	 *
-	 * @return Here HERE Maps URL builder instance
-	 */
-	public function here(): Here {
-		return new Here();
-	}
-
-	/**
-	 * Create a new OpenStreetMap URL builder
-	 *
-	 * @return OpenStreetMap OpenStreetMap URL builder instance
-	 */
-	public function open_street_map(): OpenStreetMap {
-		return new OpenStreetMap();
-	}
-
-	/**
-	 * Create a new Waze URL builder
-	 *
-	 * @return Waze Waze URL builder instance
-	 */
-	public function waze(): Waze {
-		return new Waze();
-	}
-
-	/**
-	 * Create a new Yandex Maps URL builder
-	 *
-	 * @return Yandex Yandex Maps URL builder instance
-	 */
-	public function yandex(): Yandex {
-		return new Yandex();
-	}
-
-	/**
 	 * Get URLs for all supported map services for a given location
 	 *
 	 * @param float $latitude  Latitude coordinate
@@ -117,28 +77,6 @@ class Client {
 
 		// Google Maps
 		$urls['google'] = $this->google()
-		                       ->coordinates( $latitude, $longitude )
-		                       ->zoom( $zoom )
-		                       ->get_url();
-
-		// HERE Maps
-		$urls['here'] = $this->here()
-		                     ->coordinates( $latitude, $longitude )
-		                     ->get_url();
-
-		// OpenStreetMap
-		$urls['osm'] = $this->open_street_map()
-		                    ->coordinates( $latitude, $longitude )
-		                    ->zoom( $zoom )
-		                    ->get_url();
-
-		// Waze
-		$urls['waze'] = $this->waze()
-		                     ->coordinates( $latitude, $longitude )
-		                     ->get_url();
-
-		// Yandex Maps
-		$urls['yandex'] = $this->yandex()
 		                       ->coordinates( $latitude, $longitude )
 		                       ->zoom( $zoom )
 		                       ->get_url();
